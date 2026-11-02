@@ -94,8 +94,10 @@ test('async generation persists a validated case/evidence set and protects solut
     return { output_text: JSON.stringify(aiCalls === 1 ? blueprint() : evidencePlan()) };
   } } };
   const previousTextModel = process.env.GEMINI_TEXT_MODEL;
+  const previousMediaSetting = process.env.GEMINI_MEDIA_GENERATION_ENABLED;
   try {
     delete process.env.GEMINI_TEXT_MODEL;
+    process.env.GEMINI_MEDIA_GENERATION_ENABLED = 'true';
     await runInvestigationGeneration(investigationId, {
       ai,
       providers: {
@@ -107,6 +109,8 @@ test('async generation persists a validated case/evidence set and protects solut
   } finally {
     if (previousTextModel === undefined) delete process.env.GEMINI_TEXT_MODEL;
     else process.env.GEMINI_TEXT_MODEL = previousTextModel;
+    if (previousMediaSetting === undefined) delete process.env.GEMINI_MEDIA_GENERATION_ENABLED;
+    else process.env.GEMINI_MEDIA_GENERATION_ENABLED = previousMediaSetting;
   }
 
   const status = await owner.get(`/api/investigations/${investigationId}/status`);
@@ -159,14 +163,21 @@ test('failed image and video requests are marked honestly without generating sub
   });
   let aiCall = 0;
   const ai = { interactions: { create: async () => ({ output_text: JSON.stringify(aiCall++ === 0 ? blueprint() : evidencePlan()) }) } };
-  await runInvestigationGeneration(investigation._id.toString(), {
-    ai,
-    providers: {
-      generateImage: async () => { throw new Error('simulated provider failure'); },
-      generateVideo: async () => { const error = new Error('Rate limit exceeded (limit: 0 requests per day on Free Tier).'); error.status = 429; throw error; },
-      storeMedia: async () => { throw new Error('storeMedia should not be called'); },
-    },
-  });
+  const previousMediaSetting = process.env.GEMINI_MEDIA_GENERATION_ENABLED;
+  process.env.GEMINI_MEDIA_GENERATION_ENABLED = 'true';
+  try {
+    await runInvestigationGeneration(investigation._id.toString(), {
+      ai,
+      providers: {
+        generateImage: async () => { throw new Error('simulated provider failure'); },
+        generateVideo: async () => { const error = new Error('Rate limit exceeded (limit: 0 requests per day on Free Tier).'); error.status = 429; throw error; },
+        storeMedia: async () => { throw new Error('storeMedia should not be called'); },
+      },
+    });
+  } finally {
+    if (previousMediaSetting === undefined) delete process.env.GEMINI_MEDIA_GENERATION_ENABLED;
+    else process.env.GEMINI_MEDIA_GENERATION_ENABLED = previousMediaSetting;
+  }
   const response = await owner.get(`/api/investigations/${investigation._id}/evidence`);
   assert.equal(response.status, 200);
   const generated = response.body.data.evidence;
@@ -175,6 +186,65 @@ test('failed image and video requests are marked honestly without generating sub
   assert.equal(cctv.generationStatus, 'unavailable');
   assert.equal(cctv.media.length, 0);
   assert.match(cctv.generationMessage, /unavailable on the current Gemini API plan/);
+});
+
+test('text-only generation skips media providers and remains fully playable and scorable', async () => {
+  const owner = clientFor(users[0]);
+  const investigation = await Investigation.create({
+    userId: users[0]._id,
+    scenario: 'A priceless ledger disappeared from a locked archive during a private reception.',
+    title: 'Generating text-only case',
+    status: 'Generating',
+  });
+  let aiCall = 0;
+  let imageCalls = 0;
+  let videoCalls = 0;
+  const ai = { interactions: { create: async () => ({ output_text: JSON.stringify(aiCall++ === 0 ? blueprint() : evidencePlan()) }) } };
+  const previousMediaSetting = process.env.GEMINI_MEDIA_GENERATION_ENABLED;
+  delete process.env.GEMINI_MEDIA_GENERATION_ENABLED;
+  try {
+    await runInvestigationGeneration(investigation._id.toString(), {
+      ai,
+      providers: {
+        generateImage: async () => { imageCalls += 1; throw new Error('Image provider must not be called.'); },
+        generateVideo: async () => { videoCalls += 1; throw new Error('Video provider must not be called.'); },
+        storeMedia: async () => { throw new Error('Storage must not be called in text-only mode.'); },
+      },
+    });
+  } finally {
+    if (previousMediaSetting !== undefined) process.env.GEMINI_MEDIA_GENERATION_ENABLED = previousMediaSetting;
+  }
+
+  assert.equal(aiCall, 2, 'case and evidence text generation should still run');
+  assert.equal(imageCalls, 0);
+  assert.equal(videoCalls, 0);
+  const status = await owner.get(`/api/investigations/${investigation._id}/status`);
+  assert.equal(status.body.data.status, 'Ready');
+  const caseResponse = await owner.get(`/api/investigations/${investigation._id}`);
+  assert.equal(caseResponse.status, 200);
+  assert.equal(JSON.stringify(caseResponse.body).includes('culpritSuspectId'), false);
+  const evidenceResponse = await owner.get(`/api/investigations/${investigation._id}/evidence`);
+  assert.equal(evidenceResponse.status, 200);
+  const evidence = evidenceResponse.body.data.evidence;
+  assert.equal(evidence.length, 5);
+  assert.ok(evidence.filter((item) => item.type === 'image' || item.type === 'cctv')
+    .every((item) => item.generationStatus === 'not_requested' && item.media.length === 0));
+  assert.ok(evidence.filter((item) => item.type === 'image').every((item) => item.description && item.content.caption));
+  const cctv = evidence.find((item) => item.type === 'cctv');
+  assert.equal(cctv.content.cameraLocation, 'North Archive entrance camera');
+  assert.equal(cctv.content.visualSummary, cctv.description);
+  assert.equal(new Date(cctv.content.recordedAt).toISOString(), new Date(cctv.timestamp).toISOString());
+  assert.equal(cctv.content.durationSeconds, 8);
+
+  for (const item of evidence) {
+    const viewed = await owner.post(`/api/investigations/${investigation._id}/evidence/${item.evidenceId}/viewed`);
+    assert.equal(viewed.status, 200);
+  }
+  const accusation = await owner.post(`/api/investigations/${investigation._id}/accuse`).send({ selectedSuspectId: 'S1' });
+  assert.equal(accusation.status, 201);
+  assert.equal(accusation.body.data.result.isCorrect, true);
+  assert.equal(accusation.body.data.result.score.total, 100);
+  assert.equal(accusation.body.data.result.score.reviewedEvidenceCount, 5);
 });
 
 test('invalid AI output is reported safely and a failed case can be queued for retry', async () => {

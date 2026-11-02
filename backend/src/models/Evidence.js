@@ -46,7 +46,7 @@ const evidenceSchema = new mongoose.Schema({
   media: { type: [mediaSchema], default: [] },
   generationStatus: {
     type: String,
-    enum: ['pending', 'ready', 'failed', 'unavailable'],
+    enum: ['pending', 'ready', 'failed', 'unavailable', 'not_requested'],
     default: 'pending',
     required: true,
   },

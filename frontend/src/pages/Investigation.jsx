@@ -11,6 +11,12 @@ const filters = [
   ['cctv', 'CCTV'],
 ];
 
+function evidenceStatusLabel(status, type) {
+  if (status === 'not_requested') return 'text evidence';
+  if (status === 'failed' || status === 'unavailable') return 'written details';
+  return status === 'ready' ? type : status;
+}
+
 export default function Investigation() {
   const { id } = useParams();
   const [run, setRun] = useState(0);
@@ -272,12 +278,12 @@ export default function Investigation() {
               {filteredEvidence.map((item) => (
                 <button key={item.id} className={selectedEvidence?.id === item.id ? 'evidence-list-item evidence-list-item--active' : 'evidence-list-item'} onClick={() => setSelectedEvidenceId(item.id)}>
                   <span className={`evidence-list-item__icon evidence-list-item__icon--${item.type}`} aria-hidden="true">{item.type === 'chat' ? '↔' : item.type === 'image' ? '▧' : '◉'}</span>
-                  <span className="evidence-list-item__copy"><strong>{item.title}</strong><small>{item.generationStatus === 'ready' ? item.type : item.generationStatus}</small></span>
+                  <span className="evidence-list-item__copy"><strong>{item.title}</strong><small>{evidenceStatusLabel(item.generationStatus, item.type)}</small></span>
                 </button>
               ))}
               {filteredEvidence.length === 0 && <p className="evidence-list__empty">No evidence in this category.</p>}
             </nav>
-            <EvidenceViewer evidence={selectedEvidence} />
+            <EvidenceViewer evidence={selectedEvidence} suspectNames={suspectNames} />
           </div>
         </section>
         {result ? (
@@ -351,7 +357,7 @@ export default function Investigation() {
             </button>
           </section>
         )}
-        <p className="fiction-note">This is a fictional case. Messages, images and any available CCTV-style video are AI-generated evidence.</p>
+        <p className="fiction-note">This is a fictional case. Messages and written evidence are AI-generated; images or CCTV-style video appear only when actual media was generated.</p>
       </div>
     </main>
   );

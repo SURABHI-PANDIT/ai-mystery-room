@@ -246,6 +246,23 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .media-unavailable__facts div { display: grid; gap: 0.25rem; }
 .media-unavailable__facts dt { color: #87939f; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .media-unavailable__facts dd { margin: 0; color: #d1d6db; font-size: 0.78rem; line-height: 1.5; }
+.evidence-record { position: relative; display: grid; gap: 1rem; max-width: 44rem; margin: 1.1rem auto 0; padding: clamp(1rem, 3vw, 1.5rem); overflow: hidden; border: 1px solid #45463f; border-radius: 0.7rem; background: radial-gradient(ellipse at 90% 0, rgb(142 112 64 / 13%), transparent 40%), #171b1e; box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 18%); text-align: left; }
+.evidence-record--forensic { border-left: 3px solid #a88652; }
+.evidence-record--cctv { border-color: #34444a; background: radial-gradient(ellipse at 50% 0, rgb(61 102 109 / 15%), transparent 48%), #101719; font-family: 'Courier New', monospace; }
+.evidence-record__masthead { display: flex; justify-content: space-between; gap: 0.8rem; padding-bottom: 0.75rem; border-bottom: 1px solid #394047; color: #d0b17d; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; }
+.evidence-record--cctv .evidence-record__masthead { color: #8ab0b1; }
+.evidence-record h4 { margin: 0; color: #ece8df; font-family: 'Playfair Display', Georgia, serif; font-size: 1.12rem; font-weight: 500; }
+.evidence-record__timestamp { color: #a5afb1; font-size: 0.7rem; }
+.evidence-record__notice { margin: 0; color: #aab4b8; font-family: inherit; font-size: 0.76rem; line-height: 1.5; }
+.evidence-record__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.9rem; margin: 0; padding: 0.9rem; border: 1px solid #2d3b3f; background: rgb(5 12 14 / 32%); }
+.evidence-record__facts div { display: grid; align-content: start; gap: 0.35rem; min-width: 0; }
+.evidence-record__facts dt,.evidence-record__summary > span,.evidence-record__related > span { color: #819497; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.evidence-record__facts dd { margin: 0; color: #d7e0df; font-size: 0.75rem; line-height: 1.5; overflow-wrap: anywhere; }
+.evidence-record__summary,.evidence-record__related { display: grid; gap: 0.4rem; }
+.evidence-record__summary > span,.evidence-record__related > span { color: #c9a96f; }
+.evidence-record__summary p,.evidence-record__related p,.evidence-record__caption { margin: 0; color: #d3d8d8; font-family: 'DM Sans', Arial, sans-serif; font-size: 0.84rem; line-height: 1.7; }
+.evidence-record__caption { padding: 0.8rem; border-left: 2px solid #826d4d; background: rgb(255 255 255 / 2%); }
+.video-evidence__summary { margin: 0; padding: 0.8rem; color: #c4cece; font-size: 0.78rem; line-height: 1.6; }
 .image-lightbox { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 3rem; background: rgb(5 8 11 / 92%); cursor: zoom-out; }
 .image-lightbox img { max-width: min(100%, 72rem); max-height: 100%; object-fit: contain; }
 .image-lightbox__close { position: absolute; top: 1rem; right: 1.2rem; width: 2.5rem; height: 2.5rem; border: 1px solid #626d78; border-radius: 50%; background: #202832; color: #f3f0e9; cursor: pointer; font-size: 1.5rem; }
@@ -282,6 +299,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   .result-score-breakdown { grid-template-columns: 1fr; }
   .result-score-breakdown > div { flex-wrap: wrap; }
   .media-unavailable__facts { grid-template-columns: 1fr; }
+  .evidence-record__masthead { flex-direction: column; gap: 0.35rem; }
   .scenario-meta { align-items: flex-start; flex-direction: column; }
   .scenario-actions { justify-content: stretch; }
   .scenario-actions .button { flex: 1; }

@@ -7,7 +7,7 @@ AI Mystery Room is a fictional investigation experience built with React, Expres
 - Node.js 20 or newer
 - npm 10 or newer (`npm.cmd` can be used in PowerShell if script execution blocks `npm`)
 - MongoDB running locally or a MongoDB connection URI
-- A Gemini API key for case and media generation
+- A Gemini API key for case generation; image/video generation is optional
 
 ## Setup
 
@@ -18,7 +18,7 @@ AI Mystery Room is a fictional investigation experience built with React, Expres
 5. Start the React app in another terminal with `npm run dev:frontend`.
 6. Open the Vite URL shown in the frontend terminal. Check API health at `http://localhost:5000/api/health`.
 
-Register or sign in to open the dashboard. Create a mystery with a scenario, then follow its asynchronous generation status. Ready investigations include a case overview, suspect profiles, timeline, fictional chat records, images, and CCTV-style video where generation is available. Review evidence, select one suspect, confirm your final accusation, and see the saved result and explanation. The culprit and complete solution stay on the backend until that accusation is accepted. Failed media is marked unavailable; no still image or simulated clip is substituted for video.
+Register or sign in to open the dashboard. Create a mystery with a scenario, then follow its asynchronous generation status. Ready investigations include a case overview, suspect profiles, timeline, fictional chat records, readable forensic evidence cards, and CCTV recording logs. Actual images or CCTV-style video can be enabled optionally. Review evidence, select one suspect, confirm your final accusation, and see the saved result and explanation. The culprit and complete solution stay on the backend until that accusation is accepted. Failed media is identified separately; no still image or simulated clip is substituted for video.
 
 The backend calculates a 100-point score: 70 points for a correct accusation and up to 30 points based on the share of evidence items opened before submission. The accusation is final and cannot be changed.
 
@@ -31,7 +31,7 @@ The Express API runs on Render, while Vercel serves the Vite frontend. Vercel pr
 1. Push the reviewed project to GitHub after checking the staged-file list. Keep `.env` files and credentials out of the repository.
 2. Create a MongoDB Atlas cluster and database user. In Atlas Network Access, allow the Render service's outbound IP addresses where available, rather than opening access to every IP. Copy the Atlas connection string.
 3. Create a Render **Web Service** from the repository using the repository root. Set build command `npm ci`, start command `npm start`, and health check path `/api/health`.
-4. In Render, set `NODE_ENV=production`, `MONGODB_URI` (the Atlas connection string), `JWT_SECRET` (a newly generated long random value), `GEMINI_API_KEY`, and `GEMINI_TEXT_MODEL` (for example, `gemini-2.5-flash`). Set `CLIENT_URL` to your Vercel production origin. Keep secret values in Render's environment settings, never in Git.
+4. In Render, set `NODE_ENV=production`, `MONGODB_URI` (the Atlas connection string), `JWT_SECRET` (a newly generated long random value), `GEMINI_API_KEY`, and `GEMINI_TEXT_MODEL` (for example, `gemini-2.5-flash`). Set `CLIENT_URL` to your Vercel production origin. Keep secret values in Render's environment settings, never in Git. Media generation is disabled by default; set `GEMINI_MEDIA_GENERATION_ENABLED=true` only to request generated images and video.
 5. Add persistent storage for generated media. Mount a disk at `/opt/render/project/src/backend/storage/media` and set `MEDIA_STORAGE_DIR` to that path. Render's local filesystem is otherwise ephemeral. Persistent disks require a paid Render service and restrict it to one instance; use durable object storage if you need horizontal scaling.
 6. Create a Vercel project with the repository's `frontend` directory as its Root Directory. Use `npm install` as the install command, `npm run build` as the build command, and `dist` as the output directory. Add `VITE_API_URL=/api` in the Vercel Production environment; it is embedded at build time.
 7. After Render creates the API service, replace `YOUR-RENDER-SERVICE` in `frontend/vercel.json` with its service hostname (omit `https://` and `.onrender.com`), then push the change so Vercel redeploys. The rewrite forwards `/api/*` to the Render API while retaining the Vercel URL in the browser.
@@ -41,4 +41,4 @@ Vercel's external rewrites act as a reverse proxy; the included rewrite also pro
 
 ## Verification and limitations
 
-Run `npm test --workspace backend`, `npm test --workspace frontend`, and `npm run build` from the project root. Backend integration tests use the configured MongoDB connection. Tests mock Gemini and do not require live AI calls. Image and video generation availability depends on the configured provider/model and account quota; failures are shown as unavailable rather than replaced by fabricated footage. Local media storage needs a private persistent volume in deployment.
+Run `npm test --workspace backend`, `npm test --workspace frontend`, and `npm run build` from the project root. Backend integration tests use the configured MongoDB connection. Tests mock Gemini and do not require live AI calls. With media generation disabled, investigations remain playable through the text evidence; when enabled, image/video availability depends on provider/model access and account quota. No still image or simulated clip is substituted for actual footage. Local media storage needs a private persistent volume in deployment.

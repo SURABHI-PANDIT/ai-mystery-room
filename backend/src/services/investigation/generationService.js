@@ -17,6 +17,7 @@ import { generateGeminiVideo } from '../media/geminiVideoAdapter.js';
 import { deleteMedia, storeMedia } from '../media/localStorage.js';
 
 const maxAttempts = () => Math.max(1, Math.min(3, Number(process.env.GEMINI_MAX_ATTEMPTS) || 3));
+const mediaGenerationEnabled = () => process.env.GEMINI_MEDIA_GENERATION_ENABLED?.trim().toLowerCase() === 'true';
 
 function userFacingFailure(error) {
   if (error.code === 'GEMINI_NOT_CONFIGURED') return 'Case generation is not configured yet. Please contact the administrator.';
@@ -129,6 +130,7 @@ async function generateAndSaveMedia(evidence, item, ai, providers) {
 }
 
 export async function runInvestigationGeneration(investigationId, options = {}) {
+  const generateMedia = mediaGenerationEnabled();
   const aiOverride = options.ai;
   const providers = options.providers || {
     generateImage: generateGeminiImage,
@@ -191,7 +193,7 @@ export async function runInvestigationGeneration(investigationId, options = {}) 
       associatedSuspectIds: item.associatedSuspectIds,
       timestamp: item.timestamp,
       displayOrder: index + 1,
-      generationStatus: item.type === 'chat' ? 'ready' : 'pending',
+      generationStatus: item.type === 'chat' ? 'ready' : generateMedia ? 'pending' : 'not_requested',
       generationMessage: '',
     }));
 
@@ -217,15 +219,19 @@ export async function runInvestigationGeneration(investigationId, options = {}) 
       },
     });
 
-    stage = 'generating-media';
-    await setProgress(investigationId, 'generating-media', 65, 'Generating investigation images and CCTV video.');
-    const mediaItems = validatedPlan.evidence.filter((item) => item.type === 'image' || item.type === 'cctv');
-    for (let index = 0; index < mediaItems.length; index += 1) {
-      const item = mediaItems[index];
-      const evidence = await Evidence.findOne({ investigationId, evidenceId: item.evidenceId });
-      await generateAndSaveMedia(evidence, item, ai, providers);
-      const percent = 65 + Math.round(((index + 1) / mediaItems.length) * 30);
-      await setProgress(investigationId, 'generating-media', percent, 'Generating investigation images and CCTV video.');
+    if (generateMedia) {
+      stage = 'generating-media';
+      await setProgress(investigationId, stage, 65, 'Generating investigation images and CCTV video.');
+      const mediaItems = validatedPlan.evidence.filter((item) => item.type === 'image' || item.type === 'cctv');
+      for (let index = 0; index < mediaItems.length; index += 1) {
+        const item = mediaItems[index];
+        const evidence = await Evidence.findOne({ investigationId, evidenceId: item.evidenceId });
+        await generateAndSaveMedia(evidence, item, ai, providers);
+        const percent = 65 + Math.round(((index + 1) / mediaItems.length) * 30);
+        await setProgress(investigationId, stage, percent, 'Generating investigation images and CCTV video.');
+      }
+    } else {
+      await setProgress(investigationId, 'saving-case', 90, 'Text evidence is ready. Finalizing the investigation.');
     }
 
     await Investigation.updateOne({ _id: investigationId }, {
