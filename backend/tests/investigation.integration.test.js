@@ -12,6 +12,7 @@ import { Evidence } from '../src/models/Evidence.js';
 import { Investigation } from '../src/models/Investigation.js';
 import { User } from '../src/models/User.js';
 import { createInvestigationsRouter } from '../src/routes/investigations.js';
+import { DEFAULT_GEMINI_TEXT_MODEL } from '../src/services/ai/geminiClient.js';
 import { runInvestigationGeneration } from '../src/services/investigation/generationService.js';
 import { AUTH_COOKIE_NAME, createSessionToken } from '../src/utils/auth.js';
 import { blueprint, evidencePlan } from './generationFixtures.js';
@@ -86,23 +87,34 @@ test('async generation persists a validated case/evidence set and protects solut
   assert.equal((await otherOwner.get(`/api/investigations/${investigationId}/status`)).status, 404);
 
   let aiCalls = 0;
-  const ai = { interactions: { create: async () => {
+  const requestedModels = [];
+  const ai = { interactions: { create: async (requestConfig) => {
     aiCalls += 1;
+    requestedModels.push(requestConfig.model);
     return { output_text: JSON.stringify(aiCalls === 1 ? blueprint() : evidencePlan()) };
   } } };
-  await runInvestigationGeneration(investigationId, {
-    ai,
-    providers: {
-      generateImage: async () => ({ buffer: Buffer.from('fake image bytes'), mimeType: 'image/png' }),
-      generateVideo: async () => ({ buffer: Buffer.from('fake video bytes'), mimeType: 'video/mp4' }),
-      storeMedia: async (_buffer, mimeType) => ({ mediaId: randomUUID(), storageRef: `${randomUUID()}.${mimeType === 'video/mp4' ? 'mp4' : 'png'}`, mimeType }),
-    },
-  });
+  const previousTextModel = process.env.GEMINI_TEXT_MODEL;
+  try {
+    delete process.env.GEMINI_TEXT_MODEL;
+    await runInvestigationGeneration(investigationId, {
+      ai,
+      providers: {
+        generateImage: async () => ({ buffer: Buffer.from('fake image bytes'), mimeType: 'image/png' }),
+        generateVideo: async () => ({ buffer: Buffer.from('fake video bytes'), mimeType: 'video/mp4' }),
+        storeMedia: async (_buffer, mimeType) => ({ mediaId: randomUUID(), storageRef: `${randomUUID()}.${mimeType === 'video/mp4' ? 'mp4' : 'png'}`, mimeType }),
+      },
+    });
+  } finally {
+    if (previousTextModel === undefined) delete process.env.GEMINI_TEXT_MODEL;
+    else process.env.GEMINI_TEXT_MODEL = previousTextModel;
+  }
 
   const status = await owner.get(`/api/investigations/${investigationId}/status`);
   assert.equal(status.status, 200);
   assert.equal(status.body.data.status, 'Ready');
   assert.equal(aiCalls, 2);
+  assert.equal(requestedModels.length, 2);
+  assert.deepEqual(requestedModels, [DEFAULT_GEMINI_TEXT_MODEL, DEFAULT_GEMINI_TEXT_MODEL]);
 
   const caseResponse = await owner.get(`/api/investigations/${investigationId}`);
   assert.equal(caseResponse.status, 200);

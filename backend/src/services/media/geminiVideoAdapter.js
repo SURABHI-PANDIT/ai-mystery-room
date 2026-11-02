@@ -4,14 +4,15 @@ export async function generateGeminiVideo(prompt, {
   ai = getGeminiClient(),
   model = process.env.GEMINI_VIDEO_MODEL,
 } = {}) {
-  if (!model) {
+  const modelName = typeof model === 'string' ? model.trim() : '';
+  if (!modelName) {
     const error = new Error('Video generation is not configured.');
     error.code = 'MEDIA_UNAVAILABLE';
     throw error;
   }
 
   const interaction = await ai.interactions.create({
-    model,
+    model: modelName,
     input: prompt,
     response_format: { type: 'video', resolution: '720p' },
     store: false,

@@ -1,7 +1,7 @@
 import { Evidence } from '../../models/Evidence.js';
 import { Investigation } from '../../models/Investigation.js';
 import { buildCaseBlueprintPrompt, buildEvidencePlanPrompt, caseBlueprintInstructions, evidencePlanInstructions } from '../../prompts/investigationPrompts.js';
-import { getGeminiClient } from '../ai/geminiClient.js';
+import { getGeminiClient, getGeminiTextModel } from '../ai/geminiClient.js';
 import {
   caseBlueprintJsonSchema,
   caseBlueprintSchema,
@@ -146,7 +146,7 @@ export async function runInvestigationGeneration(investigationId, options = {}) 
     const ai = aiOverride || getGeminiClient();
     const blueprint = await generateStructuredOutput({
       ai,
-      model: process.env.GEMINI_TEXT_MODEL,
+      model: getGeminiTextModel(),
       systemInstruction: caseBlueprintInstructions,
       promptBuilder: (correction) => buildCaseBlueprintPrompt(investigation.scenario, correction),
       jsonSchema: caseBlueprintJsonSchema,
@@ -160,7 +160,7 @@ export async function runInvestigationGeneration(investigationId, options = {}) 
     await setProgress(investigationId, 'planning-evidence', 35, 'Case outline validated. Connecting clues and evidence.');
     const plan = await generateStructuredOutput({
       ai,
-      model: process.env.GEMINI_TEXT_MODEL,
+      model: getGeminiTextModel(),
       systemInstruction: evidencePlanInstructions,
       promptBuilder: (correction) => buildEvidencePlanPrompt(blueprint, correction),
       jsonSchema: evidencePlanJsonSchema,

@@ -124,6 +124,11 @@ export async function generateStructuredOutput({
   timeoutMs,
   maxAttempts = 2,
 }) {
+  const modelName = typeof model === 'string' ? model.trim() : '';
+  if (!modelName) {
+    throw new AiGenerationError('GEMINI_MODEL_NOT_CONFIGURED', 'A Gemini model must be configured for this request.');
+  }
+
   let correction = '';
   let lastValidationError;
   const attemptLimit = Math.max(1, Math.min(3, Number(maxAttempts) || 2));
@@ -132,7 +137,7 @@ export async function generateStructuredOutput({
     let interaction;
     try {
       interaction = await ai.interactions.create({
-        model,
+        model: modelName,
         input: promptBuilder(correction),
         system_instruction: systemInstruction,
         ...(process.env.GEMINI_THINKING_LEVEL ? {

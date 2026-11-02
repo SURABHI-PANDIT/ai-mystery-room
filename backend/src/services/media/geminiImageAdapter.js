@@ -4,14 +4,15 @@ export async function generateGeminiImage(prompt, {
   ai = getGeminiClient(),
   model = process.env.GEMINI_IMAGE_MODEL,
 } = {}) {
-  if (!model) {
+  const modelName = typeof model === 'string' ? model.trim() : '';
+  if (!modelName) {
     const error = new Error('Image generation is not configured.');
     error.code = 'MEDIA_UNAVAILABLE';
     throw error;
   }
 
   const interaction = await ai.interactions.create({
-    model,
+    model: modelName,
     input: prompt,
     response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: '4:3', image_size: '1K' },
     store: false,

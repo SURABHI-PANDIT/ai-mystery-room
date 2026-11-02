@@ -50,6 +50,20 @@ test('video adapter requires actual video bytes and requests video output', asyn
   }
 });
 
+test('media adapters reject blank model configuration before making provider requests', async () => {
+  let calls = 0;
+  const ai = { interactions: { create: async () => { calls += 1; } } };
+  await assert.rejects(
+    () => generateGeminiImage('An evidence photo.', { ai, model: '   ' }),
+    (error) => error.code === 'MEDIA_UNAVAILABLE',
+  );
+  await assert.rejects(
+    () => generateGeminiVideo('A CCTV clip.', { ai, model: '   ' }),
+    (error) => error.code === 'MEDIA_UNAVAILABLE',
+  );
+  assert.equal(calls, 0);
+});
+
 test('local media storage returns bytes only from an opaque storage reference', async () => {
   const root = await mkdtemp(join(os.tmpdir(), 'mystery-media-'));
   try {

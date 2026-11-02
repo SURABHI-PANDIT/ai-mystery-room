@@ -7,7 +7,36 @@ import {
   validateEvidencePlanLogic,
 } from '../src/services/ai/schemas.js';
 import { generateStructuredOutput } from '../src/services/ai/structuredGeneration.js';
+import { DEFAULT_GEMINI_TEXT_MODEL, getGeminiTextModel } from '../src/services/ai/geminiClient.js';
 import { blueprint, evidencePlan } from './generationFixtures.js';
+
+test('Gemini text model uses a supported default when the production variable is missing', () => {
+  const previousModel = process.env.GEMINI_TEXT_MODEL;
+  const previousWarn = console.warn;
+  const warnings = [];
+  console.warn = (message) => warnings.push(message);
+  try {
+    delete process.env.GEMINI_TEXT_MODEL;
+    assert.equal(getGeminiTextModel(), DEFAULT_GEMINI_TEXT_MODEL);
+    assert.match(warnings[0], /GEMINI_TEXT_MODEL is missing/);
+    process.env.GEMINI_TEXT_MODEL = ' gemini-2.5-flash ';
+    assert.equal(getGeminiTextModel(), 'gemini-2.5-flash');
+  } finally {
+    console.warn = previousWarn;
+    if (previousModel === undefined) delete process.env.GEMINI_TEXT_MODEL;
+    else process.env.GEMINI_TEXT_MODEL = previousModel;
+  }
+});
+
+test('structured generation rejects an empty model before calling Gemini', async () => {
+  let calls = 0;
+  const ai = { interactions: { create: async () => { calls += 1; } } };
+  await assert.rejects(() => generateStructuredOutput({
+    ai, model: '   ', systemInstruction: 'test', promptBuilder: () => 'prompt',
+    jsonSchema: {}, zodSchema: caseBlueprintSchema, timeoutMs: 100,
+  }), (error) => error.code === 'GEMINI_MODEL_NOT_CONFIGURED');
+  assert.equal(calls, 0);
+});
 
 test('case schema and semantic validation require one culprit from the suspect set and a consistent timeline', () => {
   const valid = caseBlueprintSchema.parse(blueprint());
