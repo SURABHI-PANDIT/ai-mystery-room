@@ -1,0 +1,27 @@
+node_modules/
+frontend/dist/
+backend/.env
+frontend/.env
+frontend/.env.local
+backend/storage/media/
+.DS_Store
+npm-debug.log*
+
+# Environment files (keep safe templates trackable)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Test coverage and Vite cache
+coverage/
+**/coverage/
+.vite/
+**/.vite/
+
+# Common operating system and log files
+Thumbs.db
+Desktop.ini
+*.log
+yarn-debug.log*
+yarn-error.log*
