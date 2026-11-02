@@ -1,4 +1,4 @@
-const configuredApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL || '/api';
 const apiBaseUrl = import.meta.env.DEV ? '/api' : configuredApiUrl.replace(/\/$/, '');
 
 export function resolveApiUrl(path) {
